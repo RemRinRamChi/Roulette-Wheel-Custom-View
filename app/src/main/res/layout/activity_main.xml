@@ -7,14 +7,21 @@
         android:layout_height="match_parent"
         tools:context=".MainActivity">
 
-    <tsugumi.seii.bankai.jennao.DecisionWheel
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            app:primary_color="@android:color/holo_red_light"
-            app:secondary_color="@android:color/holo_green_light"
-            app:layout_constraintBottom_toBottomOf="parent"
+    <!--app:primary_color="#E15554"-->
+    <!--app:secondary_color="#E1BC29"-->
+    <tsugumi.seii.bankai.jennao.RouletteWheel
+            android:layout_width="0dp"
+            android:layout_height="300dp"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toTopOf="parent"/>
+            app:layout_constraintTop_toTopOf="parent" android:layout_marginTop="32dp" android:id="@+id/roulette"/>
+    <Button
+            android:text="Spin Me"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            app:layout_constraintTop_toBottomOf="@+id/roulette" app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginStart="8dp" app:layout_constraintEnd_toEndOf="parent" android:layout_marginEnd="8dp"
+            android:id="@+id/spinMe"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

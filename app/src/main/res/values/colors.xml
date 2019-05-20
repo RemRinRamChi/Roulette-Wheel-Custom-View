@@ -3,4 +3,12 @@
     <color name="colorPrimary">#008577</color>
     <color name="colorPrimaryDark">#00574B</color>
     <color name="colorAccent">#D81B60</color>
+
+    <!--Roulette colours-->
+    <color name="rouletteRed">#5C040C</color>
+    <color name="rouletteBlack">#010000</color>
+    <color name="rouletteGreen">#114200</color>
+    <color name="rouletteGold">#E0BF5F</color>
+    <color name="rouletteDarkGold">#816A41</color>
+    <color name="rouletteSilver">#E3D5D0</color>
 </resources>
