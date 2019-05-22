@@ -8,34 +8,41 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.text.TextPaint
 import android.util.AttributeSet
-import android.util.Log
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.core.animation.addListener
 import android.util.TypedValue
 import androidx.core.content.res.ResourcesCompat
+import androidx.core.graphics.toRect
+import kotlin.math.roundToInt
 
 
-// TODO on saved instance state
 class RouletteWheelView : View{
     companion object {
         private val ROULETTE_NUMBERS =
-            listOf(0,28,9,26,30,11,7,20,32,17,5,22,34,15,3,24,36,13,1,"00",27,10,25,29,12,8,19,31,18,6,21,33,16,4,23,35,14,2)
+            listOf("00",27,10,25,29,12,8,19,31,18,6,21,33,16,4,23,35,14,2,0,28,9,26,30,11,7,20,32,17,5,22,34,15,3,24,36,13,1)
+
+        private val STEP = 360f / ROULETTE_NUMBERS.size
+
+        private const val MIN_WHEEL_DIAMETER_DP = 200f
     }
 
     private lateinit var mBallPaint: Paint
-    private lateinit var mPrimaryPaint: Paint
-    private lateinit var mSecondaryPaint: Paint
+    private lateinit var mRedPaint: Paint
+    private lateinit var mBlackPaint: Paint
+    private lateinit var mGreenPaint: Paint
     private lateinit var mGoldPaint: Paint
     private lateinit var mDarkGoldPaint: Paint
-    private lateinit var mOddPaint: Paint
 
-    private lateinit var mDarkGoldTextPaint: TextPaint
+    private lateinit var mMiddleTextPaint: TextPaint
+    private lateinit var mNumberTextPaint: TextPaint
 
     private lateinit var mBaseRect: RectF
+    private lateinit var mInnerRect: RectF
     private lateinit var mBoundingRect: Rect
 
-    private var mWheelHeadWidth: Float = 0f
+    private lateinit var mMiddleLabel: String
+    private var mWheelRimHeight: Float = 0f
     private var mWheelRotation: Float = 0f
 
     constructor(context: Context?) : super(context){
@@ -49,45 +56,49 @@ class RouletteWheelView : View{
     }
 
     private fun init(attrs: AttributeSet?){
-        // Initialise non-configurable settings
+        mMiddleLabel = context.getString(R.string.roulette_wheel_centre_label)
+
         mBaseRect = RectF()
+        mInnerRect = RectF()
         mBoundingRect = Rect()
 
-        mPrimaryPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-        mSecondaryPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        mRedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteRed) }
+        mBlackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteBlack) }
         mBallPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteSilver) }
         mGoldPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteGold) }
-        mOddPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteGreen) }
-        mDarkGoldPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = context.getColor(R.color.rouletteDarkGold)
+        mGreenPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteGreen) }
+        mDarkGoldPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteDarkGold) }
+        mMiddleTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteDarkGold) }
+        mNumberTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteWhite) }
+
+        listOf(mRedPaint, mBlackPaint, mGreenPaint, mDarkGoldPaint).forEach{it.apply {
             style = Paint.Style.STROKE
-        }
-        mDarkGoldTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = context.getColor(R.color.rouletteDarkGold)
-            textAlign = Paint.Align.CENTER
+        }}
+
+        listOf(mMiddleTextPaint, mNumberTextPaint).forEach{it.apply {
             typeface = ResourcesCompat.getFont(context, R.font.playfair_display_bold)
-        }
+        }}
 
         attrs?.let {
             with(context.obtainStyledAttributes(attrs, R.styleable.RouletteWheelView)){
-                mPrimaryPaint.apply {
-                    color = getColor(R.styleable.RouletteWheelView_primary_color,
-                        context.getColor(R.color.rouletteRed))
-                    style = Paint.Style.STROKE
+                mRedPaint.apply {
+                    color = getColor(R.styleable.RouletteWheelView_primary_color, context.getColor(R.color.rouletteRed))
                 }
-                mSecondaryPaint.apply {
-                    color = getColor(R.styleable.RouletteWheelView_secondary_color,
-                        context.getColor(R.color.rouletteBlack))
-                    style = Paint.Style.STROKE
+                mBlackPaint.apply {
+                    color = getColor(R.styleable.RouletteWheelView_secondary_color, context.getColor(R.color.rouletteBlack))
                 }
                 recycle()
             }
         }
     }
 
+    private fun Canvas.drawCenterText(text: String, centerX: Float, centerY:Float, paint:TextPaint, boundingRect: Rect){
+        paint.getTextBounds(text,0, text.length,boundingRect)
+        drawText(text,centerX-boundingRect.exactCenterX(), centerY-boundingRect.exactCenterY(),paint)
+    }
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val minDiameterInDp = 200f
-        val minDiameterInPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, minDiameterInDp, resources.displayMetrics)
+        val minDiameterInPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, MIN_WHEEL_DIAMETER_DP, resources.displayMetrics)
 
         val resolvedWidth = resolveSize(Math.round(minDiameterInPx+paddingStart+paddingEnd), widthMeasureSpec)
         val resolvedHeight = resolveSize(Math.round(minDiameterInPx+paddingTop+paddingBottom), heightMeasureSpec)
@@ -97,87 +108,103 @@ class RouletteWheelView : View{
 
     override fun onDraw(canvas: Canvas) {
         val wheelDiameter: Float = (if(width < height) width else height).toFloat()/16*14
+        mWheelRimHeight = wheelDiameter/10
 
         with(mBaseRect){
             left = width/2 - wheelDiameter/2
             right = width/2 + wheelDiameter/2
             top = height/2 - wheelDiameter/2
             bottom = height/2 + wheelDiameter/2
+
+            mInnerRect.left = left + mWheelRimHeight
+            mInnerRect.right = right - mWheelRimHeight
+            mInnerRect.top = top + mWheelRimHeight
+            mInnerRect.bottom = bottom - mWheelRimHeight
         }
 
-        configurePaintStrokeSizes(wheelDiameter)
-
+        configurePaintSizes(wheelDiameter)
 
         drawWheelBase(canvas, wheelDiameter/2)
-        drawWheelHead(canvas)
+        drawWheelHead(canvas, wheelDiameter/2)
 
         // Rotate canvas before drawing stuff that will be rotated
         canvas.rotate(mWheelRotation, mBaseRect.centerX(), mBaseRect.centerY())
 
         drawBallBall(canvas, wheelDiameter/2)
-        Log.i("rotate","$mWheelRotation")
     }
 
-    private fun configurePaintStrokeSizes(wheelDiameter: Float){
-        mWheelHeadWidth = wheelDiameter/10
-
-        listOf(mPrimaryPaint,mSecondaryPaint).forEach{
+    private fun configurePaintSizes(wheelDiameter: Float){
+        listOf(mRedPaint,mBlackPaint,mGreenPaint).forEach{
             it.apply {
-                strokeWidth = mWheelHeadWidth
+                strokeWidth = mWheelRimHeight
             }
         }
 
-        mDarkGoldPaint.strokeWidth = mWheelHeadWidth/8
+        mDarkGoldPaint.strokeWidth = mWheelRimHeight/8
 
-        mDarkGoldTextPaint.textSize = wheelDiameter/4
+        mMiddleTextPaint.textSize = wheelDiameter/4
+
+        mNumberTextPaint.textSize = mWheelRimHeight*2.3f/4
     }
 
     private fun drawBallBall(canvas: Canvas, wheelRadius: Float){
-        canvas.drawCircle(mBaseRect.centerX() - wheelRadius, mBaseRect.centerY(),  mWheelHeadWidth/6, mBallPaint)
+        canvas.drawCircle(mBaseRect.centerX() - wheelRadius, mBaseRect.centerY(),  mWheelRimHeight/6, mBallPaint)
     }
 
-    private fun drawWheelHead(canvas: Canvas){
-        val step = 360f/38
+    private fun drawWheelHead(canvas: Canvas, wheelRadius: Float) {
+        val arcAngleDisplacement = -90 - STEP / 2
 
+        var drawingAngle = 0f
         var usePrimaryColor = true
-        var angleCovered = -90 - step/2
-        for(n in ROULETTE_NUMBERS){
+        for (n in ROULETTE_NUMBERS) {
+            val paintToUse: Paint
+            if (listOf("0", "00").contains(n.toString())) {
+                paintToUse = mGreenPaint
+            } else {
+                paintToUse = if (usePrimaryColor) mRedPaint else mBlackPaint
+                usePrimaryColor = !usePrimaryColor
+            }
 
-        }
-        while(angleCovered < 380){
-            canvas.drawArc(mBaseRect, angleCovered, step,
-                false,if (usePrimaryColor) mPrimaryPaint else mSecondaryPaint)
-            usePrimaryColor = !usePrimaryColor
-            angleCovered += step
+            canvas.save()
+            canvas.rotate(drawingAngle, mBaseRect.centerX(), mBaseRect.centerY())
+            canvas.drawArc(mBaseRect, arcAngleDisplacement, STEP, false, paintToUse)
+            canvas.drawCenterText(
+                n.toString(), mBaseRect.centerX(), mBaseRect.centerY() - wheelRadius,
+                mNumberTextPaint,mBoundingRect
+            )
+            canvas.restore()
+
+            drawingAngle += STEP
         }
     }
 
     private fun drawWheelBase(canvas: Canvas, wheelRadius: Float){
-        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelHeadWidth /2*3, mGoldPaint)
-        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelHeadWidth /2*3, mDarkGoldPaint)
-        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelHeadWidth /2, mDarkGoldPaint)
+        canvas.drawArc(mInnerRect,0f, 360f, false, mBlackPaint)
+        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelRimHeight /2*3, mGoldPaint)
+        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelRimHeight /2*3, mDarkGoldPaint)
+        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius + mWheelRimHeight /2, mDarkGoldPaint)
+        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelRimHeight /2, mDarkGoldPaint)
 
-        canvas.drawCenterText(context.getString(R.string.roulette_wheel_centre_label),
-            mBaseRect.centerX(), mBaseRect.centerY(), mDarkGoldTextPaint, mBoundingRect)
+        canvas.drawCenterText(mMiddleLabel,
+            mBaseRect.centerX(), mBaseRect.centerY(), mMiddleTextPaint, mBoundingRect)
     }
 
-    private fun Canvas.drawCenterText(text: String, centerX: Float, centerY:Float, paint:TextPaint, boudingRect: Rect){
-        paint.getTextBounds(text,0, text.length,boudingRect)
-        drawText(text,centerX, centerY-boudingRect.exactCenterY(),paint)
-    }
+    fun spin(travelAngle: Float){
+        val initialRotation = mWheelRotation
+        val adjustedTravelAngle = travelAngle - (mWheelRotation+travelAngle) % STEP + STEP/2
 
-    fun spin(travelAngle: Long){
-        val previousRotation = mWheelRotation
-        val animator = ValueAnimator.ofFloat(0f, travelAngle.toFloat())
-        animator.duration = travelAngle*10
+        val animator = ValueAnimator.ofFloat(0f, adjustedTravelAngle)
+        animator.duration = travelAngle.toLong()*3
         animator.interpolator = AccelerateDecelerateInterpolator()
         animator.addUpdateListener { animation ->
-            mWheelRotation = previousRotation + animation.animatedValue as Float
-
+            mWheelRotation = initialRotation + animation.animatedValue as Float
             invalidate()
         }
         animator.addListener(onEnd = {
-            mWheelRotation = previousRotation + travelAngle
+            mWheelRotation = initialRotation + adjustedTravelAngle
+            val pocketIndex = (((mWheelRotation - 90)% 360)/STEP)
+            mMiddleLabel = ROULETTE_NUMBERS[pocketIndex.roundToInt()].toString()
+            invalidate()
         })
 
         if (!animator.isStarted) {
