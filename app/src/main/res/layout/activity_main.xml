@@ -9,12 +9,13 @@
 
     <!--app:primary_color="#E15554"-->
     <!--app:secondary_color="#E1BC29"-->
-    <tsugumi.seii.bankai.jennao.RouletteWheel
+    <tsugumi.seii.bankai.jennao.RouletteWheelView
             android:layout_width="0dp"
             android:layout_height="300dp"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toTopOf="parent" android:layout_marginTop="32dp" android:id="@+id/roulette"/>
+            app:layout_constraintTop_toTopOf="parent" android:layout_marginTop="32dp" android:id="@+id/roulette"
+    />
     <Button
             android:text="Spin Me"
             android:layout_width="wrap_content"

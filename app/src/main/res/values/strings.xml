@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Jennao</string>
+
+    <string name="roulette_wheel_centre_label">DR</string>
 </resources>

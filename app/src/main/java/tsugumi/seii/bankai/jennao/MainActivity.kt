@@ -6,6 +6,7 @@ import android.util.Log
 import kotlinx.android.synthetic.main.activity_main.*
 import java.util.*
 
+// use R8 to replace proguard TODO
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {

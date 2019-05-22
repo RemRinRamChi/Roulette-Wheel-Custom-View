@@ -4,18 +4,24 @@ import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.RectF
+import android.text.TextPaint
 import android.util.AttributeSet
 import android.util.Log
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.core.animation.addListener
 import android.util.TypedValue
-
+import androidx.core.content.res.ResourcesCompat
 
 
 // TODO on saved instance state
-class RouletteWheel : View{
+class RouletteWheelView : View{
+    companion object {
+        private val ROULETTE_NUMBERS =
+            listOf(0,28,9,26,30,11,7,20,32,17,5,22,34,15,3,24,36,13,1,"00",27,10,25,29,12,8,19,31,18,6,21,33,16,4,23,35,14,2)
+    }
 
     private lateinit var mBallPaint: Paint
     private lateinit var mPrimaryPaint: Paint
@@ -23,9 +29,13 @@ class RouletteWheel : View{
     private lateinit var mGoldPaint: Paint
     private lateinit var mDarkGoldPaint: Paint
     private lateinit var mOddPaint: Paint
-    private lateinit var mBaseRect: RectF
 
-    private var mOuterWheelSize: Float = 0f
+    private lateinit var mDarkGoldTextPaint: TextPaint
+
+    private lateinit var mBaseRect: RectF
+    private lateinit var mBoundingRect: Rect
+
+    private var mWheelHeadWidth: Float = 0f
     private var mWheelRotation: Float = 0f
 
     constructor(context: Context?) : super(context){
@@ -39,7 +49,9 @@ class RouletteWheel : View{
     }
 
     private fun init(attrs: AttributeSet?){
+        // Initialise non-configurable settings
         mBaseRect = RectF()
+        mBoundingRect = Rect()
 
         mPrimaryPaint = Paint(Paint.ANTI_ALIAS_FLAG)
         mSecondaryPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -50,16 +62,21 @@ class RouletteWheel : View{
             color = context.getColor(R.color.rouletteDarkGold)
             style = Paint.Style.STROKE
         }
+        mDarkGoldTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = context.getColor(R.color.rouletteDarkGold)
+            textAlign = Paint.Align.CENTER
+            typeface = ResourcesCompat.getFont(context, R.font.playfair_display_bold)
+        }
 
         attrs?.let {
-            with(context.obtainStyledAttributes(attrs, R.styleable.RouletteWheel)){
+            with(context.obtainStyledAttributes(attrs, R.styleable.RouletteWheelView)){
                 mPrimaryPaint.apply {
-                    color = getColor(R.styleable.RouletteWheel_primary_color,
+                    color = getColor(R.styleable.RouletteWheelView_primary_color,
                         context.getColor(R.color.rouletteRed))
                     style = Paint.Style.STROKE
                 }
                 mSecondaryPaint.apply {
-                    color = getColor(R.styleable.RouletteWheel_secondary_color,
+                    color = getColor(R.styleable.RouletteWheelView_secondary_color,
                         context.getColor(R.color.rouletteBlack))
                     style = Paint.Style.STROKE
                 }
@@ -79,7 +96,7 @@ class RouletteWheel : View{
     }
 
     override fun onDraw(canvas: Canvas) {
-        val wheelDiameter: Float = (if(width < height) width else height).toFloat()/8*6
+        val wheelDiameter: Float = (if(width < height) width else height).toFloat()/16*14
 
         with(mBaseRect){
             left = width/2 - wheelDiameter/2
@@ -90,51 +107,63 @@ class RouletteWheel : View{
 
         configurePaintStrokeSizes(wheelDiameter)
 
-        drawOuterWheel(canvas)
+
+        drawWheelBase(canvas, wheelDiameter/2)
+        drawWheelHead(canvas)
 
         // Rotate canvas before drawing stuff that will be rotated
         canvas.rotate(mWheelRotation, mBaseRect.centerX(), mBaseRect.centerY())
 
         drawBallBall(canvas, wheelDiameter/2)
-
-        drawInnerBase(canvas, wheelDiameter/2)
-
         Log.i("rotate","$mWheelRotation")
     }
 
-    private fun configurePaintStrokeSizes(wheelSize: Float){
-        mOuterWheelSize = wheelSize/5
+    private fun configurePaintStrokeSizes(wheelDiameter: Float){
+        mWheelHeadWidth = wheelDiameter/10
 
         listOf(mPrimaryPaint,mSecondaryPaint).forEach{
             it.apply {
-                strokeWidth = mOuterWheelSize
+                strokeWidth = mWheelHeadWidth
             }
         }
 
-        mDarkGoldPaint.strokeWidth = mOuterWheelSize/8
+        mDarkGoldPaint.strokeWidth = mWheelHeadWidth/8
+
+        mDarkGoldTextPaint.textSize = wheelDiameter/4
     }
 
     private fun drawBallBall(canvas: Canvas, wheelRadius: Float){
-        canvas.drawCircle(mBaseRect.centerX() - wheelRadius, mBaseRect.centerY(),  mOuterWheelSize/6, mBallPaint)
+        canvas.drawCircle(mBaseRect.centerX() - wheelRadius, mBaseRect.centerY(),  mWheelHeadWidth/6, mBallPaint)
     }
 
-    private fun drawOuterWheel(canvas: Canvas){
+    private fun drawWheelHead(canvas: Canvas){
+        val step = 360f/38
+
         var usePrimaryColor = true
-        val step = 30
-        for(i in step/2..360-step/2 step step){
-            canvas.drawArc(mBaseRect,i.toFloat(),step.toFloat(),
+        var angleCovered = -90 - step/2
+        for(n in ROULETTE_NUMBERS){
+
+        }
+        while(angleCovered < 380){
+            canvas.drawArc(mBaseRect, angleCovered, step,
                 false,if (usePrimaryColor) mPrimaryPaint else mSecondaryPaint)
             usePrimaryColor = !usePrimaryColor
+            angleCovered += step
         }
     }
 
-    private fun drawInnerBase(canvas: Canvas, wheelRadius: Float){
-        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),
-            wheelRadius - mOuterWheelSize*1.6f, mGoldPaint)
-        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),
-            wheelRadius - mOuterWheelSize*1.6f, mDarkGoldPaint)
-        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),
-            wheelRadius - mOuterWheelSize/2, mDarkGoldPaint)
+    private fun drawWheelBase(canvas: Canvas, wheelRadius: Float){
+        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelHeadWidth /2*3, mGoldPaint)
+        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelHeadWidth /2*3, mDarkGoldPaint)
+        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelHeadWidth /2, mDarkGoldPaint)
+
+        canvas.drawCenterText(context.getString(R.string.roulette_wheel_centre_label),
+            mBaseRect.centerX(), mBaseRect.centerY(), mDarkGoldTextPaint, mBoundingRect)
+    }
+
+    private fun Canvas.drawCenterText(text: String, centerX: Float, centerY:Float, paint:TextPaint, boudingRect: Rect){
+        paint.getTextBounds(text,0, text.length,boudingRect)
+        drawText(text,centerX, centerY-boudingRect.exactCenterY(),paint)
     }
 
     fun spin(travelAngle: Long){
