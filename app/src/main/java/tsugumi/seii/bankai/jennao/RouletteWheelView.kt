@@ -110,7 +110,6 @@ class RouletteWheelView : View{
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val minDiameterInPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, MIN_WHEEL_DIAMETER_DP, resources.displayMetrics)
 
-        // TODO padding not considered properly
         val resolvedWidth = resolveSize(Math.round(minDiameterInPx+paddingStart+paddingEnd), widthMeasureSpec)
         val resolvedHeight = resolveSize(Math.round(minDiameterInPx+paddingTop+paddingBottom), heightMeasureSpec)
 
@@ -118,7 +117,7 @@ class RouletteWheelView : View{
     }
 
     override fun onDraw(canvas: Canvas) {
-        val wheelDiameter: Float = (if(width < height) width else height).toFloat()/16*14
+        val wheelDiameter: Float = (if(width < height) (width-paddingStart-paddingEnd) else (height-paddingTop-paddingBottom)).toFloat()/16*14
         mWheelRimHeight = wheelDiameter/10
 
         with(mBaseRect){
