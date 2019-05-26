@@ -16,17 +16,7 @@ class MainActivity : AppCompatActivity() {
         val rand = Random()
 
         spinMe.setOnClickListener {
-            val min = 280
-            val max = 580
-
-            spinWheel((rand.nextInt(max - min + 1) + min).toFloat())
+            roulette.spin((rand.nextInt(360 - 0 + 1) + 0).toFloat())
         }
-    }
-
-    private fun spinWheel(travelAngle: Float){
-
-        roulette.spin(travelAngle)
-        Log.i("Spin Roulette","Angle travelled: $travelAngle")
-
     }
 }

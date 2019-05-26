@@ -1,6 +1,7 @@
 package tsugumi.seii.bankai.jennao
 
-import android.animation.ValueAnimator
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -8,12 +9,12 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.text.TextPaint
 import android.util.AttributeSet
+import android.util.Log
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.core.animation.addListener
 import android.util.TypedValue
 import androidx.core.content.res.ResourcesCompat
-import androidx.core.graphics.toRect
 import kotlin.math.roundToInt
 
 
@@ -22,9 +23,13 @@ class RouletteWheelView : View{
         private val ROULETTE_NUMBERS =
             listOf("00",27,10,25,29,12,8,19,31,18,6,21,33,16,4,23,35,14,2,0,28,9,26,30,11,7,20,32,17,5,22,34,15,3,24,36,13,1)
 
-        private val STEP = 360f / ROULETTE_NUMBERS.size
+        private const val FULL_ROTATION = 360f
+
+        private val STEP = FULL_ROTATION / ROULETTE_NUMBERS.size
 
         private const val MIN_WHEEL_DIAMETER_DP = 200f
+
+        private const val BALL_ROLL_DURATION_MS:Long = 3000
     }
 
     private lateinit var mBallPaint: Paint
@@ -33,6 +38,7 @@ class RouletteWheelView : View{
     private lateinit var mGreenPaint: Paint
     private lateinit var mGoldPaint: Paint
     private lateinit var mDarkGoldPaint: Paint
+    private lateinit var mDarkGoldPaintLight: Paint
 
     private lateinit var mMiddleTextPaint: TextPaint
     private lateinit var mNumberTextPaint: TextPaint
@@ -43,7 +49,10 @@ class RouletteWheelView : View{
 
     private lateinit var mMiddleLabel: String
     private var mWheelRimHeight: Float = 0f
-    private var mWheelRotation: Float = 0f
+    var mBallRollAngle: Float = 0f
+    var mBallRollInnerDistance: Float = 0f
+
+    private var mSpinAnimatorSet: AnimatorSet = AnimatorSet()
 
     constructor(context: Context?) : super(context){
         init(null)
@@ -68,6 +77,7 @@ class RouletteWheelView : View{
         mGoldPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteGold) }
         mGreenPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteGreen) }
         mDarkGoldPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteDarkGold) }
+        mDarkGoldPaintLight = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteDarkGold) }
         mMiddleTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteDarkGold) }
         mNumberTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteWhite) }
 
@@ -100,6 +110,7 @@ class RouletteWheelView : View{
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val minDiameterInPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, MIN_WHEEL_DIAMETER_DP, resources.displayMetrics)
 
+        // TODO padding not considered properly
         val resolvedWidth = resolveSize(Math.round(minDiameterInPx+paddingStart+paddingEnd), widthMeasureSpec)
         val resolvedHeight = resolveSize(Math.round(minDiameterInPx+paddingTop+paddingBottom), heightMeasureSpec)
 
@@ -124,11 +135,10 @@ class RouletteWheelView : View{
 
         configurePaintSizes(wheelDiameter)
 
-        drawWheelBase(canvas, wheelDiameter/2)
-        drawWheelHead(canvas, wheelDiameter/2)
+        drawWheel(canvas, wheelDiameter/2)
 
         // Rotate canvas before drawing stuff that will be rotated
-        canvas.rotate(mWheelRotation, mBaseRect.centerX(), mBaseRect.centerY())
+        canvas.rotate(mBallRollAngle, mBaseRect.centerX(), mBaseRect.centerY())
 
         drawBallBall(canvas, wheelDiameter/2)
     }
@@ -141,6 +151,7 @@ class RouletteWheelView : View{
         }
 
         mDarkGoldPaint.strokeWidth = mWheelRimHeight/8
+        mDarkGoldPaintLight.strokeWidth = mWheelRimHeight/16
 
         mMiddleTextPaint.textSize = wheelDiameter/4
 
@@ -148,11 +159,15 @@ class RouletteWheelView : View{
     }
 
     private fun drawBallBall(canvas: Canvas, wheelRadius: Float){
-        canvas.drawCircle(mBaseRect.centerX() - wheelRadius, mBaseRect.centerY(),  mWheelRimHeight/6, mBallPaint)
+        canvas.drawCircle(mBaseRect.centerX() - wheelRadius - mWheelRimHeight/2 + mBallRollInnerDistance, mBaseRect.centerY(),  mWheelRimHeight/6, mBallPaint)
     }
 
-    private fun drawWheelHead(canvas: Canvas, wheelRadius: Float) {
+    private fun drawWheel(canvas: Canvas, wheelRadius: Float) {
         val arcAngleDisplacement = -90 - STEP / 2
+
+        canvas.drawArc(mInnerRect,0f, FULL_ROTATION, false, mBlackPaint)
+        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelRimHeight /2*3, mGoldPaint)
+        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelRimHeight /2*3, mDarkGoldPaint)
 
         var drawingAngle = 0f
         var usePrimaryColor = true
@@ -167,6 +182,8 @@ class RouletteWheelView : View{
 
             canvas.save()
             canvas.rotate(drawingAngle, mBaseRect.centerX(), mBaseRect.centerY())
+            canvas.drawLine(mInnerRect.left + mWheelRimHeight/2,mInnerRect.centerY(),
+                mBaseRect.left + mWheelRimHeight/2, mInnerRect.centerY(), mDarkGoldPaintLight)
             canvas.drawArc(mBaseRect, arcAngleDisplacement, STEP, false, paintToUse)
             canvas.drawCenterText(
                 n.toString(), mBaseRect.centerX(), mBaseRect.centerY() - wheelRadius,
@@ -176,39 +193,55 @@ class RouletteWheelView : View{
 
             drawingAngle += STEP
         }
-    }
 
-    private fun drawWheelBase(canvas: Canvas, wheelRadius: Float){
-        canvas.drawArc(mInnerRect,0f, 360f, false, mBlackPaint)
-        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelRimHeight /2*3, mGoldPaint)
-        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelRimHeight /2*3, mDarkGoldPaint)
         canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius + mWheelRimHeight /2, mDarkGoldPaint)
         canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelRimHeight /2, mDarkGoldPaint)
 
         canvas.drawCenterText(mMiddleLabel,
             mBaseRect.centerX(), mBaseRect.centerY(), mMiddleTextPaint, mBoundingRect)
+
     }
 
     fun spin(travelAngle: Float){
-        val initialRotation = mWheelRotation
-        val adjustedTravelAngle = travelAngle - (mWheelRotation+travelAngle) % STEP + STEP/2
-
-        val animator = ValueAnimator.ofFloat(0f, adjustedTravelAngle)
-        animator.duration = travelAngle.toLong()*3
-        animator.interpolator = AccelerateDecelerateInterpolator()
-        animator.addUpdateListener { animation ->
-            mWheelRotation = initialRotation + animation.animatedValue as Float
-            invalidate()
+        if(mSpinAnimatorSet.isRunning){
+            Log.d(this.javaClass.simpleName, "Animation is running")
+            return
         }
-        animator.addListener(onEnd = {
-            mWheelRotation = initialRotation + adjustedTravelAngle
-            val pocketIndex = (((mWheelRotation - 90)% 360)/STEP)
-            mMiddleLabel = ROULETTE_NUMBERS[pocketIndex.roundToInt()].toString()
-            invalidate()
-        })
 
-        if (!animator.isStarted) {
-            animator.start()
+        if(mBallRollInnerDistance != 0f){
+            with(ObjectAnimator.ofFloat(this, "mBallRollInnerDistance", mBallRollInnerDistance, 0f)){
+                duration = 500
+                addUpdateListener { invalidate() }
+                addListener(onEnd = {
+                    spin(travelAngle)
+                })
+                start()
+            }
+        } else {
+            val initialRotation = mBallRollAngle
+            val adjustedTravelAngle = 2 * FULL_ROTATION + travelAngle - (mBallRollAngle + travelAngle) % STEP + STEP / 2
+
+            val innerDistAnimator = ObjectAnimator.ofFloat(this, "mBallRollInnerDistance", 0f, mWheelRimHeight * 1.5f)
+
+            val circularRollAnimator =
+                ObjectAnimator.ofFloat(this, "mBallRollAngle", initialRotation, initialRotation + adjustedTravelAngle)
+                    .apply {
+                        interpolator = AccelerateDecelerateInterpolator()
+                        addUpdateListener { invalidate() }
+                        addListener(onEnd = {
+                            val pocketIndex = (((mBallRollAngle - 90) % 360) / STEP)
+                            mMiddleLabel = ROULETTE_NUMBERS[pocketIndex.roundToInt()].toString()
+                            invalidate()
+                        })
+                    }
+
+            mSpinAnimatorSet = AnimatorSet().apply {
+                playTogether(innerDistAnimator, circularRollAnimator)
+                duration = BALL_ROLL_DURATION_MS
+
+                Log.d(this.javaClass.simpleName, "Animation is starting")
+                start()
+            }
         }
     }
 }
