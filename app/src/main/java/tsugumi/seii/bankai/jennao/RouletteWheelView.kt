@@ -14,6 +14,7 @@ import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.core.animation.addListener
 import android.util.TypedValue
+import android.view.MotionEvent
 import androidx.core.content.res.ResourcesCompat
 import kotlin.math.roundToInt
 
@@ -33,11 +34,12 @@ class RouletteWheelView : View{
     }
 
     private lateinit var mBallPaint: Paint
+    private lateinit var mBallGlowPaint: Paint
     private lateinit var mRedPaint: Paint
     private lateinit var mBlackPaint: Paint
     private lateinit var mGreenPaint: Paint
     private lateinit var mGoldPaint: Paint
-    private lateinit var mDarkGoldPaint: Paint
+    private lateinit var mDarkGoldPaintThick: Paint
     private lateinit var mDarkGoldPaintLight: Paint
 
     private lateinit var mMiddleTextPaint: TextPaint
@@ -51,6 +53,7 @@ class RouletteWheelView : View{
     private var mWheelRimHeight: Float = 0f
     var mBallRollAngle: Float = 0f
     var mBallRollInnerDistance: Float = 0f
+    private var mBallGlowing: Boolean = false
 
     private var mSpinAnimatorSet: AnimatorSet = AnimatorSet()
 
@@ -74,14 +77,15 @@ class RouletteWheelView : View{
         mRedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteRed) }
         mBlackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteBlack) }
         mBallPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteSilver) }
+        mBallGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteBrightRed) }
         mGoldPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteGold) }
         mGreenPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteGreen) }
-        mDarkGoldPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteDarkGold) }
+        mDarkGoldPaintThick = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteDarkGold) }
         mDarkGoldPaintLight = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteDarkGold) }
         mMiddleTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteDarkGold) }
         mNumberTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteWhite) }
 
-        listOf(mRedPaint, mBlackPaint, mGreenPaint, mDarkGoldPaint).forEach{it.apply {
+        listOf(mRedPaint, mBlackPaint, mGreenPaint, mDarkGoldPaintThick).forEach{it.apply {
             style = Paint.Style.STROKE
         }}
 
@@ -149,7 +153,7 @@ class RouletteWheelView : View{
             }
         }
 
-        mDarkGoldPaint.strokeWidth = mWheelRimHeight/8
+        mDarkGoldPaintThick.strokeWidth = mWheelRimHeight/8
         mDarkGoldPaintLight.strokeWidth = mWheelRimHeight/16
 
         mMiddleTextPaint.textSize = wheelDiameter/4
@@ -159,6 +163,10 @@ class RouletteWheelView : View{
 
     private fun drawBallBall(canvas: Canvas, wheelRadius: Float){
         canvas.drawCircle(mBaseRect.centerX() - wheelRadius - mWheelRimHeight/2 + mBallRollInnerDistance, mBaseRect.centerY(),  mWheelRimHeight/6, mBallPaint)
+        if(mBallGlowing){
+            canvas.drawCircle(mBaseRect.centerX() - wheelRadius - mWheelRimHeight/2 + mBallRollInnerDistance, mBaseRect.centerY(),  mWheelRimHeight/4, mBallGlowPaint)
+        }
+
     }
 
     private fun drawWheel(canvas: Canvas, wheelRadius: Float) {
@@ -166,7 +174,7 @@ class RouletteWheelView : View{
 
         canvas.drawArc(mInnerRect,0f, FULL_ROTATION, false, mBlackPaint)
         canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelRimHeight /2*3, mGoldPaint)
-        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelRimHeight /2*3, mDarkGoldPaint)
+        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelRimHeight /2*3, mDarkGoldPaintThick)
 
         var drawingAngle = 0f
         var usePrimaryColor = true
@@ -193,12 +201,22 @@ class RouletteWheelView : View{
             drawingAngle += STEP
         }
 
-        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius + mWheelRimHeight /2, mDarkGoldPaint)
-        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelRimHeight /2, mDarkGoldPaint)
+        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius + mWheelRimHeight /2, mDarkGoldPaintThick)
+        canvas.drawCircle(mBaseRect.centerX(), mBaseRect.centerY(),wheelRadius - mWheelRimHeight /2, mDarkGoldPaintThick)
 
         canvas.drawCenterText(mMiddleLabel,
             mBaseRect.centerX(), mBaseRect.centerY(), mMiddleTextPaint, mBoundingRect)
 
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.action){
+            MotionEvent.ACTION_DOWN -> {
+                mBallGlowing = !mBallGlowing
+                invalidate()
+            }
+        }
+        return true
     }
 
     fun spin(travelAngle: Float){
