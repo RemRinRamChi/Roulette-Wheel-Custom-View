@@ -4,7 +4,7 @@ This project contains a Roulette Wheel custom view for Android, which can be fou
  
 ![Roulette Wheel Custom View Preview](roulette_wheel_custom_view.png)
 
-
+- American Roulette Wheel
 - Customisable Wheel colours
 - Ball that glows red on touch
 - Modifiable source code to configure the results you desire
