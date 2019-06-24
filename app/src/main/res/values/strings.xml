@@ -1,5 +1,6 @@
 <resources>
-    <string name="app_name">Jennao</string>
+    <string name="app_name">Dragon Roulette</string>
 
     <string name="roulette_wheel_centre_label">DR</string>
+    <string name="roulette_wheel_spin_button_label">Spin Me</string>
 </resources>

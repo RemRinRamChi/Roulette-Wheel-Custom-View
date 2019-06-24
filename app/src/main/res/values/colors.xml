@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#008577</color>
-    <color name="colorPrimaryDark">#00574B</color>
-    <color name="colorAccent">#D81B60</color>
+    <color name="colorPrimary">@color/rouletteGreen</color>
+    <color name="colorPrimaryDark">@color/rouletteBlack</color>
+    <color name="colorAccent">@color/rouletteGreen</color>
+    <color name="colorWhite">#FFFFFF</color>
 
     <!--Roulette colours-->
     <color name="rouletteRed">#5C040C</color>
@@ -13,4 +14,8 @@
     <color name="rouletteSilver">#E3D5D0</color>
     <color name="rouletteWhite">#BCB6B8</color>
     <color name="rouletteBrightRed">#CCFE2803</color>
+
+    <!--Random Dragon colours-->
+    <color name="dragonRed">#7F2926</color>
+    <color name="dragonBlue">#261B5B</color>
 </resources>

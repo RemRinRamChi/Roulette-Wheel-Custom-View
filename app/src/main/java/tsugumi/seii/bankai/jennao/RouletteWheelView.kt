@@ -35,7 +35,8 @@ class RouletteWheelView : View{
 
     private lateinit var mBallPaint: Paint
     private lateinit var mBallGlowPaint: Paint
-    private lateinit var mRedPaint: Paint
+    private lateinit var mPrimaryPaint: Paint
+    private lateinit var mSecondaryPaint: Paint
     private lateinit var mBlackPaint: Paint
     private lateinit var mGreenPaint: Paint
     private lateinit var mGoldPaint: Paint
@@ -74,10 +75,11 @@ class RouletteWheelView : View{
         mInnerRect = RectF()
         mBoundingRect = Rect()
 
-        mRedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteRed) }
-        mBlackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteBlack) }
+        mPrimaryPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteRed) }
+        mSecondaryPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteBlack) }
         mBallPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteSilver) }
         mBallGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteBrightRed) }
+        mBlackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteBlack) }
         mGoldPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteGold) }
         mGreenPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteGreen) }
         mDarkGoldPaintThick = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteDarkGold) }
@@ -85,7 +87,7 @@ class RouletteWheelView : View{
         mMiddleTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteDarkGold) }
         mNumberTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.rouletteWhite) }
 
-        listOf(mRedPaint, mBlackPaint, mGreenPaint, mDarkGoldPaintThick).forEach{it.apply {
+        listOf(mPrimaryPaint, mSecondaryPaint, mBlackPaint, mGreenPaint, mDarkGoldPaintThick).forEach{it.apply {
             style = Paint.Style.STROKE
         }}
 
@@ -95,10 +97,10 @@ class RouletteWheelView : View{
 
         attrs?.let {
             with(context.obtainStyledAttributes(attrs, R.styleable.RouletteWheelView)){
-                mRedPaint.apply {
+                mPrimaryPaint.apply {
                     color = getColor(R.styleable.RouletteWheelView_primary_color, context.getColor(R.color.rouletteRed))
                 }
-                mBlackPaint.apply {
+                mSecondaryPaint.apply {
                     color = getColor(R.styleable.RouletteWheelView_secondary_color, context.getColor(R.color.rouletteBlack))
                 }
                 recycle()
@@ -147,7 +149,7 @@ class RouletteWheelView : View{
     }
 
     private fun configurePaintSizes(wheelDiameter: Float){
-        listOf(mRedPaint,mBlackPaint,mGreenPaint).forEach{
+        listOf(mPrimaryPaint,mSecondaryPaint,mBlackPaint,mGreenPaint).forEach{
             it.apply {
                 strokeWidth = mWheelRimHeight
             }
@@ -162,9 +164,11 @@ class RouletteWheelView : View{
     }
 
     private fun drawBallBall(canvas: Canvas, wheelRadius: Float){
-        canvas.drawCircle(mBaseRect.centerX() - wheelRadius - mWheelRimHeight/2 + mBallRollInnerDistance, mBaseRect.centerY(),  mWheelRimHeight/6, mBallPaint)
+        val ballCenterX = mBaseRect.centerX() - wheelRadius - mWheelRimHeight/2 + mBallRollInnerDistance
+        val ballCenterY = mBaseRect.centerY()
+        canvas.drawCircle(ballCenterX, ballCenterY,  mWheelRimHeight/6, mBallPaint)
         if(mBallGlowing){
-            canvas.drawCircle(mBaseRect.centerX() - wheelRadius - mWheelRimHeight/2 + mBallRollInnerDistance, mBaseRect.centerY(),  mWheelRimHeight/4, mBallGlowPaint)
+            canvas.drawCircle(ballCenterX, ballCenterY,  mWheelRimHeight/4, mBallGlowPaint)
         }
 
     }
@@ -183,7 +187,7 @@ class RouletteWheelView : View{
             if (listOf("0", "00").contains(n.toString())) {
                 paintToUse = mGreenPaint
             } else {
-                paintToUse = if (usePrimaryColor) mRedPaint else mBlackPaint
+                paintToUse = if (usePrimaryColor) mPrimaryPaint else mSecondaryPaint
                 usePrimaryColor = !usePrimaryColor
             }
 
